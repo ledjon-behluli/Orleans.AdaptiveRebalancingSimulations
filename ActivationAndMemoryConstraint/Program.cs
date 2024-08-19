@@ -46,8 +46,8 @@ for (int S = 1; S <= silos; S++)
     var (cycles, alphas, activationsHistory, initialActivations, finalActivations, totalCycles, H_current) = 
         SimulateCluster(S, maxCycles, maxEntropyStaleCycles, maxEntropyDiff, relativeMemoryUsages);
 
-    double H_start = CalculateEntropy(initialActivations);
-    double H_end = CalculateEntropy(finalActivations);
+    double H_start = CalculateEntropy(initialActivations, relativeMemoryUsages, relativeMemoryUsages.Average());
+    double H_end = CalculateEntropy(finalActivations, relativeMemoryUsages, relativeMemoryUsages.Average());
     double H_max = Math.Log(S);
     double alpha_start = alphas[0];
     double alpha_end = alphas[^1];
@@ -83,13 +83,13 @@ for (int S = 1; S <= silos; S++)
 
 Application.Run(form);
 
-static double CalculateEntropy(double[] n)
+static double CalculateEntropy(double[] n, double[] m, double M)
 {
     double totalActivations = n.Sum();
     if (totalActivations == 0)
         return 0;
 
-    double[] p = n.Select(x => x / totalActivations).Where(x => x > 0).ToArray(); // filter out zero probabilities to avoid Log(0)  
+    double[] p = n.Select((x, i) => x / totalActivations * (m[i] / M)).Where(x => x > 0).ToArray(); // filter out zero probabilities to avoid Log(0)  
     double entropy = -p.Sum(x => x * Math.Log(x));
     return entropy;
 }
@@ -130,7 +130,7 @@ static (double[], double[], double[][], double[], double[], int, double[]) Simul
     double N = activations.Sum();
 
     double maxEntropy = Math.Log(S);
-    double currentEntropy = CalculateEntropy(activations);
+    double currentEntropy = CalculateEntropy(activations, memoryUsages, memoryUsages.Average());
 
     double[] cycleNumbers = Enumerable.Range(0, maxCycles).Select(x => (double)x).ToArray();
     double[] alphas = new double[maxCycles];
@@ -153,7 +153,7 @@ static (double[], double[], double[][], double[], double[], int, double[]) Simul
         deviations[cycle] = activations.Select((x, i) => x - optimalActivations[i]).ToArray();
 
         double previousEntropy = currentEntropy;
-        currentEntropy = CalculateEntropy(activations);
+        currentEntropy = CalculateEntropy(activations, memoryUsages, meanMemoryUsage);
         double alpha = maxEntropy != 0 ? currentEntropy / maxEntropy : 0;
         alphas[cycle] = alpha;
         H_current[cycle] = currentEntropy;
