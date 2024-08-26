@@ -2,10 +2,10 @@
 using System.Drawing;
 using System.Windows.Forms;
 
-const bool UseAdaptiveScaling = false;
+const bool UseAdaptiveScaling = true;
 
 int silos = 5;
-int maxCycles = 40;
+int maxCycles = 140;
 int maxEntropyStaleCycles = 10;
 double maxEntropyDiff = 1e-4;
 
@@ -46,8 +46,8 @@ for (int S = 1; S <= silos; S++)
     var (cycles, alphas, activationsHistory, initialActivations, finalActivations, totalCycles, H_current) = 
         SimulateCluster(S, maxCycles, maxEntropyStaleCycles, maxEntropyDiff, relativeMemoryUsages);
 
-    double H_start = CalculateEntropy(initialActivations, relativeMemoryUsages, relativeMemoryUsages.Average());
-    double H_end = CalculateEntropy(finalActivations, relativeMemoryUsages, relativeMemoryUsages.Average());
+    double H_start = CalculateEntropy(initialActivations, relativeMemoryUsages, relativeMemoryUsages.HarmonicMean());
+    double H_end = CalculateEntropy(finalActivations, relativeMemoryUsages, relativeMemoryUsages.HarmonicMean());
     double H_max = Math.Log(S);
     double alpha_start = alphas[0];
     double alpha_end = alphas[^1];
@@ -130,7 +130,7 @@ static (double[], double[], double[][], double[], double[], int, double[]) Simul
     double N = activations.Sum();
 
     double maxEntropy = Math.Log(S);
-    double currentEntropy = CalculateEntropy(activations, memoryUsages, memoryUsages.Average());
+    double currentEntropy = CalculateEntropy(activations, memoryUsages, memoryUsages.HarmonicMean());
 
     double[] cycleNumbers = Enumerable.Range(0, maxCycles).Select(x => (double)x).ToArray();
     double[] alphas = new double[maxCycles];
@@ -142,7 +142,7 @@ static (double[], double[], double[][], double[], double[], int, double[]) Simul
     int entropyStableCount = 0;
     int cycle;
 
-    double meanMemoryUsage = memoryUsages.Average();
+    double meanMemoryUsage = memoryUsages.HarmonicMean();
 
     for (cycle = 0; cycle < maxCycles; cycle++)
     {
@@ -195,4 +195,18 @@ static (double[], double[], double[][], double[], double[], int, double[]) Simul
         finalActivations,
         cycle + 1,
         H_current.Take(cycle + 1).ToArray());
+}
+
+public static class MeanEx
+{
+    public static double HarmonicMean(this double[] values)
+    {
+        double sumReciprocal = 0.0;
+        foreach (double value in values)
+        {
+            sumReciprocal += 1.0 / value;
+        }
+
+        return values.Length / sumReciprocal;
+    }
 }
